@@ -1,0 +1,342 @@
+Je travaille maintenant à la maison sur mon pc perso et j'ai réussis à installer docker sur ma machine (ubuntu 18.04), j'ai récréé deux conteneurs (node1 et node2) qui utilisent l'image CentOS 7.2, que j'ai connecté sur le réseau "mynet" (172.18.0.0/24) créé au préalable. J'ai ensuite travaillé sur un code permettant l'envoi de données par l'intermédiaire de sockets. J'ai écris deux code en c, un code serveur.c (le node1) et un code client.c (le node2). Avec le Dockerfile j'ai réussis à copier les fichiers exécutables de ces deux codes, de ma machine vers mes conteneurs (je ne peux pas directement compiler les fichiers dans mes conteneurs car la commande gcc n'est pas reconnu, il manque des packages). J'arrive ensuite à établir la connexion entre les deux conteneurs (en utilisant les fonctions listen() et accept() ) à l'aide de sockets. Le problème ici est que mon code ne fait que la connexion, je n'ai pas encore travaillé sur la partie envoie de données en boucle, mais je pense savoir comment faire à l'aide des fonctions send() et recv().
+
+Une des particularité du code serveur est que je peux spécifier les adrese ip des éléments( ici node) qui vont pouvoir se connecter au à la socket:
+
+Il existe une structure de type SOCKADDR_IN (cette strucure va me permettre de paramétrer la socket) qui contient l'argument .s_addr, dans cet argument je renseigne l'adresse ip de la ou des machine ayant le droit de se connecter ( INADDR_ANY si je permet à n'importe quelle adresse de se connecter )
+
+Dans le code client je vais devoir utiliser cet argument (.s_addr) pour donner l'adresse ip à laquelle je vais me connecter, cela va donc être l'adresse ip du node1 sur le sous-réseau "mynet"
+
+Je peux aussi renseigner la famille de protocole que je vais utiliser grâce à l'argument .sin_family, il faut lui imposer la valeur AF_INET pour utiliser le protocole TCP. 
+
+Les fonctions importantes de mon code sont les suivantes:
+
+bind(sock, (SOCKADDR*)&sin, sizeof(sin));: la fonction bind va me permettre d'associer les informations de la structure SOCKADDR_IN précédente à la socket. La fonction retourne SOCKET_ERROR en cas d'erreur.
+
+listen(int socket, int backlog):Cette fonction va me permettre de mette dans un état d'écoute la socket pour pouvoir ensuite établir la connexion.La fonction retourne SOCKET_ERROR en cas d'erreur.
+
+
+socket(int domain, int type, int protocol);: La fonction socket permet de créer la socket. La fonction retourne la socket créée.
+
+
+accept(int socket, struct sockaddr* addr, socklen_t* addrlen);:Cette fonction permet d'établir la connexion entre le client et le serveur après que le client est fait un appel de connexion. Cette fonction retourne la socket client ou INVALID_SOCKET en cas d'erreur.
+
+connect(int socket, struct sockaddr* addr, socklen_t addrlen): J'utilise cette fonction côté client afin de faire un appel de connexion. Si tout se passe bien la fonction retourne 0, et -1 en cas d'erreur.
+
+
+Une fois le code qui permet d'établir la connexion terminé j'ai essayé de le compiler directement dans le dockerfile, cela ne fonctionne pas car dans mon conteneur (qui a pour base la centos 7.2) la commande gcc n'existe pas.
+Je vais donc compiler mon fichier de code à l'extérieur de mon conteneur et je vais copier le fichier éxecutable directement dans mon conteneur. Cela fonctionne bien et est une méthode moins lourde vu qu'on emporte seulement le fichier éxecutable, à l'échelle de mon application c'est négligeable mais pour des codes beaucoup plus lourd cela peut être interressant.
+
+
+Je dois maintenant essayer de réaliser un "ping pong", le serveur envoi "ping" et le client renvoit "pong" jusqu'a ce que la socket soit arrete. Je dois aussi mettre en place un compteur, qui me donnera le nombre de "ping" et de "pong" recu, et mettre en place un système permettant de dire s'il y a eu des erreurs.
+
+J'ai écris un code qui permet de créer une socket, de connecter un client et un serveur dessus, d'envoyer des données, de bien les recevoir. Le fait d'essayer d'envoyer ping et pong en boucle me pose beaucoup de problemes. J'essaye dans un premier temps d'imposer un certain nombre de "pong" à envoyer en utilisant une boucle for(), sans succès. Je travaille donc maintenant sur un code sous forme de chat. Je demande à l'utilisateur de rentrer un mot depuis le "node sereur" et le client va le recevoir, je repond par un autre mot depuis le client. Les codes sont client.C et serveur.c, j'utilise ici les fonctions memeset() et scanf(). Le code fonctionne bien.
+
+J'ai créé deux script bash qui me permettent pour chaque conteneur de supprimer l'image correspondante au conteneur, de créer la nouvelle image, de supprimer l'ancien conteneur, et de lancer le nouveau conteneur. 
+lauch.sh est le nom du script.
+
+J'ai rajouté une ligne dans le script bash qui me permet de compiler les fichiers serveur.c et client.c, de la sorte je peux compiler mon code, lancer mes conteneurs et tester le code directement dans les conteneurs. 
+
+Dans deux folder node1 et node2 je place le code serveur.c et client.c, leur fichier éxécutables respectifs, le scipt bash, et le dockerfile (qui me permet de copier le fichier éxecutable dans le conteneur). Dans la suite pour chacun de mes tests il me suffira de me placer dans le bon directory et de lancer les deux script bash, cela compilera le code et lancera le conteneur, je n'ai plus qu'a utiliser la commande ./nom_de_l'éxecutable dans les deux conteneurs pour lancer mon code.
+A noter: IL EST IMPORTANT DE LANCER LES CONTENEURS DANS LE BON ORDRE, EN PREMIER LE 1 ENSUITE LE 2 etc... cela permet tout d'abord d'attribuer la bonne adresse ip aux conteneurs (notament par rapport au mapping du fichier etc/hosts) et cela a bien évidemment une importance dans la notion client-serveur, je lance le serveur en premier puis le client.
+
+
+J'ai aussi ajouter une ligne dans les dockerfile me permettant de me placer directement dans le directory /home des conteneurs à l'ouverture de ce dernier étant donner que les fichiers éxecutables se trouvent dans ce directory. Cela me permet de ne pas avoir à taper la commande "cd home" à chaque fois.
+
+Je viens de réussir à réaliser le "ping pong", en utilisant un while() (coté serveur) strcpy(), send() et recv().
+Dans le while je definis une variable qui va prendre la valeur de retour de la focntion send() et recv(), et tant que cette variable est supérieur à -1 (ces deux fonctions renvoient la taille des messages que l'on envoi, send() ou que l'on recoit, recv(), et elles renvoient -1 s'il y a une erreur), autrement dit tant que je recoit un message je continue d'en envoyer.
+
+send(int socket, void* buffer, size_t len, int flags): send() est la fonction qui permet d'envoyer des données contenu dans buffer vers le client ou le serveur, elle retourne la taille en octet du message envoyé.
+
+recv(int socket, void* buffer, size_t len, int flags):recv() permet de réceptionner le message qui sera contenu dans buffer. Elle retourne la taille du message en octet.
+
+
+Le problème maintenant est de réaliser le compteur qui va me dire combien de fois j'ai envoyé de "ping" et de "pong". Il y a une petite correction à faire , lorsque je suis sur le client (ou le serveur ) et que je quitte la socket, le serveur (ou le client) continue de tourner (en envoyant et recvant des messages vides) donc si je dois créer un compteur, il va continuer d'être incrémenté. J'aimerai que lorsque je quitte le serveur ou le client cela me quitte aussi automatiquement le client ou le serveur. Peut être introduire des if() dans le while(), if(le client n'est pas déco) continuer else (arreter tout).
+
+J'ai rajouté une fonction if() dans le while() qui me permet de tester si je recoit un message ou non, si oui je l'affiche, sinon je commence la procdure de déconnexion du socket. Cela me permet de régler le problème précédent, lorsque je quitte le client le serveur s'arrête (mais pas immédiatement...) et le compteur s'afficher. Pour le compteur j'utilise tout simplement l'incrémentation des variables i et j à chaque envoi et réception (i pour le nombre de "pong" recu et j pour le nombre de "ping" envoyé, le compteur se trouve uniquement côté serveur !).
+
+Pour me lancer dans le « ping-pong » à 8 cibles je dois commencer par créer les autres conteneurs, je n’en ai que deux pour l’instant. A terme, je devrais avoir 8 folders, node1 à node8, contenant chacun un dockerfile, un script bash launch.sh, et le code en c. Il y a un code serveur.c dans le folder node1 et 7 client.c dans 7 autres folder ( à noter que les client.c sont quasiment identiques, il y a juste une différence dans les options d’affichages, chacun des clients va afficher la phrase « Connexion du node x au node 1 en attente » ).
+
+Je viens de terminer le ping pong avec les 8 conteneurs, j'ai ajouté 6 fonctions accept() par rapport au code précédent. La fonction accept() me permet d'attendre qu'un client se connect, il y a donc 7 fonction accept() pour les nodes 2 à 8. 
+Dans le while() il y a maintenant 7 conditions if() qui vont correspondre à l'envoi et à la receptions des messages sur les node 2 à 8, ce système de conditions if() placées les une à la suite des autres me permet de fonctionner en unicast c'est à dire qu'à tour de rôle le node1 va envoyer "ping" au node 2, puis 3 , puis 4...Il passe au node suivant seulement s'il recoit "pong".
+ 
+je dois essayer de faire fonctionner mon code en multicast (pour cela utiliser l'UDP) et essayer de faire varier la fréquence d'envoi des messages. Trouver un moyen de faire varier le tout simplement, en utilisant une ligne de code par exemple.
+
+Décomposition du temps de travail :
+
+L’installation de mon environnement de travail (Ubuntu, configuration de Docker) m’a pris une journée.
+
+La mise en place du code permettant la connexion des nodes par l’intermédiaire des sockets n’a pas mis plus de deux jours. 
+
+La mise en place du « tchat » m’a pris deux à trois jours.
+
+L’écriture des scripts bash m’a pris moins d’une demi journée.
+
+La mise en place du « ping-pong » depuis le code du « tchat » m’a pris deux jours, j’ai aussi dû utiliser deux jours pour permettre à mon code d’utiliser les 8 nodes.
+
+
+
+//07/04
+
+Je pense utiliser argv[] afin de choisir le mode de fonctionnement (unicast ou multicast) et la fréquence de fonctionnement du ping pong. argc contient le nombre d'argument de ma ligne de commande permettant d'éxécuter le programme et argv contient les arguments.
+
+Exemple: $ ./Snode1 UDP 0.001 
+argc = 3
+argv[0]= Snode1
+argv[1]= UDP
+argv[2]= 0.001
+
+Ensuite je pense fusionner ce code UDP (sender.c et receiver.c) avec le code TCP (serveur.c et client.c) pour pouvoir en une seule commande (au moment de l'éxecution de l'éxecutable) choisir entre les deux protocoles de communication. Je vais rajouter un argument dans la commande d'éxecution qui sera soit UDP soit TCP (ou unicast/multicast) pour ensuite récupérer cette argument dans le code, si l'argument est UDP alors je lance le code sender.c sinon je lance serveur.c. Je compte rajouter une option me permettant de faire varier la fréquence d'envoi des données, en rajoutant un argument dans la commande.
+
+
+
+// 08/04
+
+Ici le but est de fonctionner en UDP/multicast, et d'envoyer des donées (et en recevoir) depuis le node1 vers les node 2 à 8. Il va y avoir un sender et 7 receivers.
+
+Pour faire du multicast il faut utiliser les adresses de multicast définient dans la RFC 988, il s'agit des adresses comprises entre 224.0.0.0 et 239.255.255.255. Je vais donc devoir modifier l'adresse de sous-réseau du réseau mynet (172.18.0.0/24) ou bien créer un autre sous-réseau "multinet" auquel je vais connecter tout mes conteneurs et procéder au multicast.
+
+////////expliquer le code .............
+
+
+Dans le code sender et receiver il suffit de renseigner une adresse de multicast pour que le sender puisse publier sur cette adresse et les receiver se connecter écouter sur cette adresse pour ensuite récupérer les données envoyées par le sender.
+
+J'ai tout d'abord essayer l'adresse multicast 239.0.0.0 et le port 1110 pour établir la connexion en multicast (en local dans un premier temps). J'ouvre 3 terminaux, dans un je lance le code sender.c, dans les deux autre je lance receiver.c, et le multicasting est bien opérationel car les messages "Ping" s'affichent  bien dans les deux termininaux receiver.
+
+J'ai ensuite tester de connecter le sender sur 239.0.0.0 et les deux receiver sur 239.0.0.1, et bien évidemment cela ne fonctionne pas. Je pense que je ne vais pas avoir besoin de créer un "réseau multicast" mais seulement spécifier l'adresse de multicast 239.0.0.0. Mes conteneurs devraient être en mesure de pouvoir communiquer. 
+
+J'ai rajouté dans le folder node1 le code sender.c, dans le scipt bash j'ai rajouté une ligne me permettant de compiler ce code. Dans le dockerfile je copie l'éxecutable depuis mon PC vers le conteneur node1 dans le répertoire /home (au même endroit que serveur.c)
+
+Je fais de même avec le code receiver.c, pour les folder node2 à 8.
+
+Le test a fonctionner avec les conteneurs, j'arrive à émettre le message "ping" en multicast depuis le node1 vers les node 2 à 8. Je dois maintenant essayer de les faire répondre "pong".
+09/04
+J'essaye d'utiliser une autre socket afin de faire le retour"pong" en unicast.
+
+Problème d'adressage ip,( bind: Cannot assign requested address), surement pcq je déclare deux socket qui doivent se connecter à la même ip, ou bien pcq la socket en question utilise le protocole UDP et qu'elle doit seulement être reliée au adresses multicast ?
+
+J'ai réglé le problème en ne renseignant aucune adresse spécifique dans les structures d'adressage, j'ai seulement mis htonl(INADRR_ANY) pour spécifier que toutes les adresses ip peuvent utiliser la socket.
+10/04
+Le problème maintenant est que je lance le sender et le receiver et les programmes tournent dans le vide, rien ne s'affiche, lorsque je commente la fonction qui me permet de récupérer "pong" dans le code sender (recvfrom()), on a un retour à la normale, "ping" s'affiche sur le receiver.
+
+Avec mon code actuel, j'envoi ping en multicast, le receiver le reçoit bien,j'essaye de renvoyer pong au sender, mais je l'envoit en fait au groupe multicast car sur le receiver je vois ping et pong qui s'affichent, je dois redéfinir la structure d'adressage de la fonction sendto du code receiver pour l'envoyer sur le sender, c'est pour cela que lorsque j'utilise la fonction recvfrom() dans le sender, il envoi une fois pong puis s'arrete, la fonction recvfrom ne recoit rien, donc fait crasher le programme. Peut être recréer une socket en tcp à laquelle le serveur va venir se connecter pour effectuer le retour de pong.
+
+14/04
+
+Je bloque toujours sur l'aspect retour de mon code multicast, je le laisse donc de côté pour rajouter quelques options à mon code serveur.c et client.C (TCP/IP). Je cherche à ajuster la fréquence de mes envoi de données, calculer le temps d'aller-retour de mes données depuis le node1 vers les nodes 2 à 8.
+
+Je viens d'ajouter une option me permettant de choisir le délai d'attente (en nanoseconde) entre chaque envoi de "ping". Ce délai devra être ajouté comme argument à la commande du lancement de l'exécutable. Exemple : $./Snode1 5000000 
+Le choix du délai ne pourra se faire que dans le conteneur 1, il ne sera effectif que dans le conteneur 1, lorsque les conteneurs 2 à 8 reçoivent "ping" ils renvoient (théoriquement) instantanément "pong". Ensuite le conteneur 1 reçoit "pong", attend pendant x nanosecondes, et renvoit "ping" au coneneur suivant.
+
+J'ai aussi ajouté une option permettant le calcul du temps d'aller-retour des données en utilisant la fonction gettimeofday(), cela me donne une résolution de l'ordre de la microseconde. J'affiche le résultat à chaque réception de données sur le node 1.
+
+Test du temps aller-retour en fonction du délai d'attente:
+Il est à noter que le délai d'attente en nanoseconde ne devrait pas modifier le temps aller-retour car le délai est effectif après réception des données donc après le calul du temps de trajet aller-retour.
+
+pour un délai de 1 nanoseconde, le temps de trajet des données est en moyenne de 125 µs
+pour un délai de 10 nanoseconde, le temps de trajet des données est en moyenne de 47 µs
+pour un délai de 100 nanoseconde, le temps de trajet des données est en moyenne de 49 µs
+pour un délai de 1000 nanoseconde, le temps de trajet des données est en moyenne de 51 µs
+pour un délai de 10000 nanoseconde, le temps de trajet des données est en moyenne de 58 µs
+pour un délai de 100000 nanoseconde, le temps de trajet des données est en moyenne de 45 µs
+pour un délai de 1000000 nanoseconde, le temps de trajet des données est en moyenne de 139 µs
+pour un délai de 10000000 nanoseconde, le temps de trajet des données est en moyenne de 323 µs
+
+On est donc en moyenne à un temps de trajet qui tourne autours de la centaine de micro seconde.
+
+La réalisation du code "ping-pong" en multicast me posait problème. En effet, j'arrivais à émettre "ping" depuis un sender vers 7 receivers en udp, mais pas le retour "pong" de chaque receivers vers le sender. Le problème est que j'utilise un groupe multicast, lorsque j'envoi des données par l'intermédiaire de la socket cela je l'envoi en fait à l'adresse 236.0.0.0, qui est une adresse multicast. Le groupe multicast connecté à cette adresse est un groupe composé des mes différents node. Lorsque, depuis un receiver, je tente d'envoyer vers le sender (node1) un message, le message est d'abord envoyé à l'adresse 236.0.0.0 puis aux nodes 2 à 8... La socket que j'utilisais (qui était aussi la socket de réception de "ping") était programée pour fonctionner en multicast. J'ai donc décider de créer une nouvelle socket dédiée au transfert de "pong" depuis les receivers vers le sender. 
+
+Cela fonctionne avec 1 receiver. En revanche il y a un problème au niveau du contenu du message, je reçoit bien "Pong" mais il est suivit généralement de caractère non identifiés et de "U". De plus lorsque j'utilise 7 receiver, étant donné que j'utilise une seule fonction recvfrom(), je ne vais pouvoir afficher qu'un seul des 7 "ping" que je devrais recevoir. En fait ce qui se passe est un peu plus complexe, dans mon code sender, si je reçoit une réponse des receivers, je j'envoie "ping" et je je stop le process x nanoseconde. Lorsque je lance les 7 receivers j'ai donc 7 "pong" qui arrivent, j'affiche le premier arrivé (car je n'utilise qu'une seule fonction recvfrom(), je cherche à en utiliser plusieurs à la fois), et je renvoie "ping" aux 7 receivers, ensuite je reçoit 7 autre "pong" des receivers (j'ai donc reçu 14 "pong" jusqu'ici) et j'affiche le deuxième "pong" que j'ai reçu. En fonction de la rapidité à laquelle je lance les 7 receivers on recevra les données du node 8 (qui est lancé en dernier) aux alentours du 340 ème envoie de "ping", il y a donc un effet de latence important qui s'aggrave lorsque la fréquence augmente (nanosleep diminue).
+
+Je définis un temps d'arrêt entre chaque envoie en multicast de "ping" grâce à la fonction nanosleep(), comme précédement on peut régler ce temps d'arrêt directement au lancement de la commande.
+
+Concernant le temps d'aller retour, j'utilise le même procédé que pour le code en unicast, à l'aide de la fonction gettimeoftheday(). Ici le délai entre le lancement du code sender.c et receiver.c joue sur le premier temps d'aller retour. Le compteur permettant de déterminer le temps d'aller-retour, commence lorsque je lance sender.c car contrairement au code utilisant le protocole TCP, ici il n'y a pas d'attente de connexion du client, je lance le code, et le node1 émet instantanément en multicast le mot "ping" vers les receivers. 
+
+Je viens de fusionner les deux codes sender.c et serveur.c ainsi que les codes receiver.c et client.c. Désormais, le nouveau code « sender » est pingpong.c , les nouveaux code « receiver » sont pingpongR.c
+ 
+On peut choisir au moment de l’exécution de l’exécutable si on veut utiliser un type de commucication en multicast ou unicast, on peut aussi choisir le délai d’interruption du process en nanoseconde. (Pour les code receiver on ne peut choisir que le type de communication utilisé, qui doit correspondre avec celui choisit pour le code sender). 
+
+Exemple : Je souhaite lancer un ping pong en multicast avec une fréquence d’envoie de 9000 nanoseconde, j’ouvre un terminal, je me place dans le folder node1, je lance le script launch.bash qui va compiler mon code et lancer le conteneur 1. Ensuite , dans le conteneur je rentre la commande : $./pingpong 9000 multi
+J’ouvre 7 autre terminaux, dans chacun d’eux je lance launch.bash, je rentre dans les conteneurs, et je lance la commande : $./pingpongR multi 
+
+20/04
+Je suis dans une phase de recherche au sujet de la migration de conteneurs. J'ai trouvé un article qui traite de la migration de running conteneurs. On sauvegarde l'état du conteneur (comme un screenshot) dans une image, qui elle même est sauvegardée dans un fichier tar. On transmet ce fichier tar depuis la machine 1 vers la machine 2, par du ftp (file transfert protocol) par exemple, et on recréer le conteneur sur la machine 2 en redéployant l'image qui est contenu dans le tar.
+
+https://www.jamescoyle.net/how-to/1512-export-and-import-a-docker-image-between-nodes
+
+Un second article traite de la migration de conteneurs mais d'une façon plus expérimentale. Il est nécessaire ici de télécharger une VM vagrant qui va nous permettre d'utiliser de nouvelles commandes docker (docker checkpoint). Le transfert se fait de la VM 1 à la VM 2. 
+
+Je vais dans un premier temps tenter d'utiliser le même procédé que le premier article. 
+
+Le problème du premier article est qu'il ne permet pas de faire de la "live migration", je dois stopper le conteneur, le copier, l'envoyer manuellement sur une machine distante et le redéployer toujours manuellement sur cette même machine. 
+
+Je vais me pencher sur le procédé utilisé dans le second article, à savoir utiliser la commande docker checkpoint. En revanche ce sont des "experimental features", il faut apporter certaines modifications sur le set up de docker sur ma machine. De plus il s'agit d'un procédé expérimental que docker met en service car il y a beaucoup de demande sur la live migration, mais ce n'est pas complètement opérationel et il est conseillé de ne pas utiliser ces commandes dans pour de la production.
+
+21/04
+Je tente de faire en sorte de rendre mon environnement de travails compatible avec l'utilisation de CRIU et de la commande docker checkpoint. Pour cela il suffit de faire des réglage sur le daemon docker par l'intermédiaire du fichier daemon.json et sur le client docker par l'intermédiaire du fichier config.json.
+
+Ce sont des fichiers qui permettent d'ajouter/enlever des options à mon environnement docker. Je peux par exemple spécifier dans ces fichier que je veux rentrer dans le mode "experimental" afin d'utiliser le CRIU (l'utilisation du CRIU avec docker est encore expérimentale). 
+
+Je dois donc spécifier ce changement dans les deux fichiers à l'aide de la ligne de code:
+
+"experimental": true (pour le fichier daemon.json)
+"experimental": "enabled" (pour le fichier config.json)
+
+Malheureusement cela ne fonctionne pas, car lorsque je cherche à utiliser la commande checkpoint, je reçois un message d'erreur qui est : 
+docker checkpoint is only supported on a Docker daemon with experimental features enabled
+
+Je cherche donc à me documenter sur le CRIU et j'ai suivit une conférence qui en parlait (https://www.youtube.com/watch?v=izycGffZOtg) 
+
+CRIU apporte une nouveauté, le freezing de l'état d'un process. Lorsqu'on veut faire un checkpoint d'un process on vient faire un freezing de l'état de ce process. Docker supporte CRIU depuis septembre 2016. D'où l'apparition de la nouvelle fonctionnalité:
+
+$ docker checkpoint [Options] container checpoint_id
+
+On peut maintenant stopper un conteneur, sauvegarder son état dans un checkpoint_id, et le relancer plus tard à partir de cette état en utilisant la commande 
+
+$ docker start --checkpoint checkpoint_id [options] container
+
+La live migration with CRIU n'est pas une fonctionnalité "voulu".
+Les étapes de la live migration
+
+1) Checkpoint the container (freeze the container state)
+2) Migrate checpoint metadata to target
+3) Pull exact image on target
+4) Create container from same image at target
+5) Extract checkpoint metadata into new container path
+6) Start container with docker start --checkpoint
+
+22/04
+
+J'ai réussis à rendre disponible les fonctionnalité docker checkpoint liées au CRIU. J'avais bien modifié le fichier daemon.json (en réalité j'ai dû le creer et le placer dans le répertoire etc/docker). J'ai pensé qu'un simple redémarrage de mon pc servait à rendre ces changements opérationels, mais non...J'ai dû redémarrer docker, à l'aide de la commande :
+sudo systemctl restart docker
+
+Après cela le docker server était en mode experimental. Lors de l'appel de la commande "docker version" le résultat était:
+
+Client:
+ Version:           19.03.6
+ API version:       1.40
+ Go version:        go1.12.17
+ Git commit:        369ce74a3c
+ Built:             Fri Feb 28 23:45:43 2020
+ OS/Arch:           linux/amd64
+ Experimental:      false
+
+Server:
+ Engine:
+  Version:          19.03.6
+  API version:      1.40 (minimum version 1.12)
+  Go version:       go1.12.17
+  Git commit:       369ce74a3c
+  Built:            Wed Feb 19 01:06:16 2020
+  OS/Arch:          linux/amd64
+  Experimental:     true
+ containerd:
+  Version:          1.3.3-0ubuntu1~18.04.1
+  GitCommit:        
+ runc:
+  Version:          spec: 1.0.1-dev
+  GitCommit:        
+ docker-init:
+  Version:          0.18.0
+  GitCommit:   
+
+On remarque que le mode expérimental du docker server est réglé sur "true", en revanche il reste à modifier celui du docker client (d'après ce que j'ai pu voir dans différents articles/blog) qui est réglé sur "false". Mais la commande fonctionne bien sans que j'ai à faire ce dernier réglage.
+
+(J'ai de plus travaillé en parallèle sur l'encryptage de mon password docker)
+
+Je vais maintenant tenté de de checkpoint le conteneur node1 alors qu'il est run, pour ensuite le relancer. 
+1) Je lance le conteneur node1 comme habituellement
+2) J'ouvre un nouveau terminal et j'utilise la commande "docker checkpoint create node1 check1"
+3) J'obtiens une erreur:
+
+Error response from daemon: Cannot checkpoint container node1: runc did not terminate sucessfully: CRIU version check failed: exec: "criu": executable file not found in $PATH path= /run/containerd/io.containerd.runtime.v1.linux/moby/ddcf2ed3124b65f37d3a121819b4bc65f01344673967a0b0649d66f384e7c33f/criu-dump.log: unknown
+
+Il semble que je dois installer CRIU sur ma machine. J'utilise simplement "sudo apt install criu".
+Je retente de créer le checkpoint et cela fonctionne.
+
+Si je reprend depuis le début:
+
+1) Je lance le conteneur node1 comme habituellement
+2) J'ouvre un nouveau terminal et j'utilise la commande "docker checkpoint create node1 check1"
+3) Le conteneur node1 s'arrête, le checkpoint check1 est créé.
+Je peux maintenant afficher la liste des checkpoints d'un contneur à l'aide de la commande 
+"docker checkpoint ls node1" le résultat est :
+CHECKPOINT NAME
+check1
+
+Lorsque je fais "docker ps" à cet instant pour afficher les conteneurs actifs, il n'y a aucun conteneurs listé.
+4) J'utilise maintenant la commande "docker start --checkpoint check1 node1" afin de redémarrer le conteneur à partir du checkpoint. Le conteneur redémarre (car lorsque je fais "docker ps" il est listé) mais je ne rentre pas directement dans le conteneur contrairement à d'habitude, il s'est juste lancé, pour rentrer dedans et lancer des commandes depuis mon conteneur (comme par exemple éxecuter le fichier pingpong.c) je dois utiliser la commande : "docker exec -it node1 bash"
+
+Je peux donc maintenant faire des checkpoints de conteneurs, à différents instants pour sauvegarder différents états d'un conteneur et le redémarrer dans l'état 1, 2, 3 ou x etc...
+
+Mais comment savoir que mon conteneur repart bien à partir de l'état dans lequel il se trouvait avant le checkpoint (il pourrait juste être démarré comme un conteneur lambda) ? Je vais essayer pour répondre à cette question d'utiliser le pingpong sur lequel j'ai travaillé les deux dernière semaines.
+
+L'idée du test que je veux réaliser est que je lance le pingpong depuis le conteneur 1, je lance le pingpong receiver depuis le conteneur node 2, je "checkpoint"le node2, et ensuite je le re-"start" , et je vois si le compteur de mon pingpong node1 continu de s'incrémenter normalement ou s'il repart de 0 ou s'il ne repart pas du tout. Je pourrais aussi ajouter un compteur sur le node2 et voir si le compteur repars de 0 ou continu normalement.
+
+J'ai ajouté un compteur sur le pingpong receiver (node2).
+Je lance mon application sur le node 1 puis sur le node2.
+Je checkpoint le node2, j'appel ce checkpoint "check2". $ docker checkpoint create node2 check2
+Je relance le node2 à partir de check2. $ docker start --checkpoint check2 node2
+Je rentre dans le conteneur. $docker exec -it node2 bash
+L'application pingpongR dans le conteneur est arrêté, je dois la relancer. $./pingpongR multi
+Le compteur repars de 0, le test n'a pas fonctionné.
+
+Ici le problème est que lorsque je réalise le checkpoint, l'application s'arrête, et il ne semble pas que son état soit sauvegardé. Je réessaye le test d'une façon différente. 
+
+Je lance seulement le conteneur node2.
+Je supprime le fichier "pingpongR" (fichier exécutable de mon application qui se trouve dans le répertoire /home).
+Je checkpoint le node2, j'appel ce checkpoint "check22". $ docker checkpoint create node2 check22
+Je relance le node2 à partir de check2. $ docker start --checkpoint check22 node2
+Je rentre dans le conteneur. $docker exec -it node2 bash
+J'affiche le répertoire /home.
+Le répertoire est vide, le fichier est toujours supprimé, le conteneur repart bien de l'état dans lequel il se trouvait lors du checkpoint.
+
+La première chose à noter est qu'il faut donner un autre nom au checkpoint ("check22"), car par rapport au checkpoint précédent ("check2"), l'état du conteneur a bien évolué. Précédement lorsque j'essayais de checkpoint le conteneur en utilisant mon application, je pouvais le checkpoint plusisuer fois avec le même nom de checkpoint car l'état n'avait pas évolué, cela peut donc être un indicateur pour tester l'évolution de l'état d'un conteneur ou non.
+
+Ensuite le "docker checkpoint" ne semble pas conserver l'état des différents process qui sont actif dans le conteneur, mais juste l'état du conteneur lui-même. 
+
+Je souhaite maintenant essayer de "checkpoint" un conteneur sur ma machine, et le redémarrer sur une machine distante. Je n'ai à disposition qu'un seul PC, je vais donc télécharger une machine virtuelle ubuntu 18.04 à l'aide de virtualBox. J'installe VirtualBox, je récupère ensuite le fichier .iso correspondant à ubuntu 18.04, et je lance l'installation, le nom de la machine virtuelle est hostC (car j'ai créé une machine virtuelle hostB, en centos 7.6 en prévision de futur test).
+Je dois aussi réinstaller docker, sur hostC. Les versions de docker sur ma machine et sur hostc diffèrent légèrement.
+
+ma machine: Docker version 19.03.6, build 369ce74a3c
+
+hostc: Docker version 19.03.8, build afacb8b7f0
+
+Après l'installation de docker, 
+je dois activer l'"experimental mode" en créant le fichier daemon.json et en y ajoutant :
+"experimental": true
+
+Cela fonctionne, en revanche sur hostc, pour lancer la commande "docker checkpoint" je dois utiliser "sudo", sinon j'obtiens une erreur de connextion au daemon docker. Pareil lorsque je veux utiliser la commande "docker version", cela m'afficher bien les infos liées au client docker, mais en revanche à la place des infos liées au server docker, j'obtiens une erreur de connexion si je n'utilise pas sudo.
+En fait, à chaque fois que je veux utiliser docker sur hostc je dois être en root. Je dois ajouter sudo devant chaque commande.
+
+Jai réglé le problème de la façon suivante:
+
+sudo gpasswd -a $USER docker //j'ajoute mon user au groupe docker 
+sudo systemctl restart docker // Je reboot docker sur hostc
+reboot // je reboot hostc 
+
+L'idée est maintenant de transférer les fichiers liés au checkpoint d'un conteneur, depuis ma machine, vers hostc, je vais utiliser le protocole ftp. Tout d'abord je dois déterminer l'amplacement des fichiers en question. Cela peut se faire simplement à l'aide de l'argument --checkpoint-dir de la commande $docker checkpoint create 
+Cet argument me permet de renseigner un diectory dans lequel seront placés les fichiers de checkpoint qui me permttront par la suite de redéployer le conteneur sur hostC.
+
+Par exemple, je lance le conteneur node1, j'ouvre un nouveau terminal et je rentre la commande:
+"$docker checkpoint create --checkpoint-dir=/home/sofian/Bureau/stage-thales/node1 node1 checkpoint1"
+
+Je créé le checkpoint "checkpoint1" , du conteneur node1, et je place le dossier de checkpoint dans le directory "home/sofian/Bureau/stage-thales/node1"
+
+
+Je cherche à établir une connexion avec hostc, je cherche donc à détermier son adresse ip, j'ouvre un terminal sur hostc et je rentre la commande :$curl ifconfig.me
+l'adresse ip est 80.214.118.30. Pour des raisons pratiques j'ajoute cet adresse ip liée à "hostC" dans le fichier etc/hosts de ma machine (hostA).
+
+27/04
+
+Pour une raison qui m'échappe, lorsque je sauvegarde le checkpoint dans le même folder où se trouve le dockerfile, il m'est impossible de lancer mon conteneur normalement ensuite (en utilisant le script launch.sh). Je reçoit l'erreur :
+
+error checking context: 'can't stat '/home/sofian/Bureau/stage-thales/node1/checkpoint1''.
+Unable to find image 'imagenode1:latest' locally
+docker: Error response from daemon: pull access denied for imagenode1, repository does not exist or may require 'docker login': denied: requested access to the resource is denied.
+
+Je décide donc de créer dans le directory /home/sofian/Bureau/stage-thales un folder "Checkpoints" afin d'y placer tous les checkpoints que je vais créer par la suite.
+
+Parallèlement 
+
+
+
