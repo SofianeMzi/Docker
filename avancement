@@ -336,7 +336,7 @@ docker: Error response from daemon: pull access denied for imagenode1, repositor
 
 Je décide donc de créer dans le directory /home/sofian/Bureau/stage-thales un folder "Checkpoints" afin d'y placer tous les checkpoints que je vais créer par la suite.
 
-Parallèlement 
+Parallèlement, j'apprends à utiliser git, pour pouvoir y gérer mon projet. Après l'avoir installé sur ma machine, j'ai suivis quelque tutoriels afin de me faire la main dessus.
 
 
 
