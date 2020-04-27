@@ -39,7 +39,7 @@ if(argc != 2){
 	return 0;
 }
 char *argument=argv[1];
-if ( strcmp(argument,"multi")==0){
+if ( strcmp(argument,"multi")==0){//Si l'argument est multi, alors on fait de l'udp
     char* group = "236.0.0.0"; 
     int port = 1110; 
 
@@ -132,7 +132,7 @@ int i=0;
 
     return 0;
 }
-else(strcmp(argument,"uni")==0);
+else(strcmp(argument,"uni")==0);// Si l'argument est "uni" alors on fait du tcp
 {
 
 	SOCKET sock;       

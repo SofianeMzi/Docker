@@ -39,7 +39,8 @@ if(argc != 2){
 	return 0;
 }
 
-if ( argv[1] == "multi"){
+char *argument=argv[1];
+if ( strcmp(argument,"multi")==0){//Si l'argument est multi, alors on fait de l'udp
         char* group = "236.0.0.0"; 
     int port = 1110; 
 
@@ -129,7 +130,7 @@ strcpy(buffer,"Node3: Pong");
 
     return 0;
 }
-else(argv[1]=="uni");
+else(strcmp(argument,"uni")==0);// Si l'argument est "uni" alors on fait du tcp
 {
 	SOCKET sock;       
         SOCKADDR_IN sin;

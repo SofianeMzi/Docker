@@ -338,5 +338,9 @@ Je décide donc de créer dans le directory /home/sofian/Bureau/stage-thales un 
 
 Parallèlement, j'apprends à utiliser git, pour pouvoir y gérer mon projet. Après l'avoir installé sur ma machine, j'ai suivis quelque tutoriels afin de me faire la main dessus.
 
+J'ai ajouté mon projet au "staging environment" à l'aide de la commande $ git add <nom_des_fichier>
+J'ai réalisé un git commit de mon projet à l'aide de la commande 
+$git commit -m "First commit, 8 node containing 1 Dockerfile, 1 script launch.sh in order to launch container easily and compile the codes, 1 pingpong application code, note that pingpong.c is the fusion result of ser.c and sender.c, pingpongR.c is the fusion result of receiver.c and client.c "
 
+Mon projet se trouve maintenant sur github. Je cherche le moyen de transférer les futurs changements de mon projet local, sur le projet qui se trouve sur github.
 
