@@ -1,6 +1,6 @@
 #!/bin/bash
-gcc client.c -o Cnode2
-gcc receiver.c -o receiver
+#gcc client.c -o Cnode2
+#gcc receiver.c -o receiver
 gcc pingpongR.c -o pingpongR
 
 for image_id in $(docker images --filter=reference=image_name --format "{{.ID}}")
