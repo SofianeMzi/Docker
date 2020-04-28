@@ -13,4 +13,4 @@ for container_id in $(docker ps -aqf "name=node1")
 	do docker rm -f ${container_id} 
 done
 
-docker run -it --name node1 --network mynet -h node1 imagenode1 bash
+docker run -it --restart always --name node1 --network mynet -h node1 imagenode1 bash
