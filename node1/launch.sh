@@ -13,11 +13,5 @@ for container_id in $(docker ps -aqf "name=node1") #supression du conteneur pré
 	do docker rm -f ${container_id} 
 done
 
-docker run -it --restart unless-stopped --name node1 --network mynet -h node1 imagenode1 bash #lancement du conteneur node1 ( l'argument --restart est inutile pour le moment )
+docker run -it --restart always --name node1 --network mynet -h node1 imagenode1 bash #lancement du conteneur node1 ( l'argument --restart est inutile pour le moment )
 
-while true; do # boucle qui permet de relancer le conteneur tout de suite après qu'il ait été fermé ( intentionellement ou non)
-	for container_id in $(docker ps -aqf "name=node1") #supression du conteneur précédent 
-		do docker rm -f ${container_id} 
-	done
-	docker run -it --restart unless-stopped --name node1 --network mynet -h node1 imagenode1 bash #lancement du nouveau  conteneur 
-done 
