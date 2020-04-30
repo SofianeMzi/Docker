@@ -25,8 +25,10 @@ echo "container running, waiting for exit code"
 #amélioration du code en prévision de l'utilisation de docker checkpoint/commit/expose, utilisation d'une boucle while dans laquelle je peux indiquer de redémarrer le conteneur en utilisant d'autre options de la commande docker run, précédement j'utilisais toujours la même commande
 while true
 do
+#j'attend que la fonction wait détecte la fermeture du conteneur
 	cmd_output=$(docker wait node1) 
-	wait $!
+#j'attend que la fotncion wait() détecte un changement d'état du process créé par docker wait node1
+	wait $!  
 	echo "container stopped, exit code: $cmd_output"
 #supression du conteneur précédent pour éviter un conflit avec le nouveau conteneur qui va être créé
 	for container_id in $(docker ps -aqf "name=node1")  
