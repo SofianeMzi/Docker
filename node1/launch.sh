@@ -1,7 +1,7 @@
 #!/bin/bash
 #gcc serveur.c -o Snode1 
 #gcc sender.c -o sender
-gcc pingpong.c -o pingpong #compilation du code pingpong.c
+#gcc pingpong.c -o pingpong #compilation du code pingpong.c
 
 for image_id in $(docker images --filter=reference=imagenode1 --format "{{.ID}}") #supression de l'image précédente
 	do docker rmi -f ${image_id}
