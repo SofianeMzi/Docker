@@ -1,6 +1,5 @@
 #!/bin/bash
-gcc pingpong.c -o pingpong #compilation du code pingpong.c
-
+#permet de réaliser le test du temps de redémarrage ou d'utiliser le conteneur en mode restart
 for image_id in $(docker images --filter=reference=imagenode1 --format "{{.ID}}") #supression de l'image précédente
 	do docker rmi -f ${image_id}
 done
@@ -19,8 +18,9 @@ while true; do # boucle qui permet de relancer le conteneur tout de suite après
 	for container_id in $(docker ps -aqf "name=node1") #supression du conteneur précédent 
 		do docker rm -f ${container_id} 
 	done
- #lancement du nouveau  conteneur, avec l'option permettant de rentrer dedans
-	docker run --name node1 --network mynet -h node1 imagenode1 bash 
+ #lancement du nouveau  conteneur
+	docker run --name node1 --network mynet -h node1 imagenode1 bash #ligne a décommenter si on souhaite réaliser le test du temps de redémarrage
+	#docker run -it --name node1 --network mynet -h node1 imagenode1 bash #ligne a décommenter si l'on souhaite se servir de ce code pour utiliser le conteneur et le relancer s'il automatiquement s'il crash 
 	end=`date +%s%N | cut -b1-13` #mesure du temps
 	runtime=$((end-start))
 	echo $runtime ms
