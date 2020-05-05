@@ -4,4 +4,4 @@ COPY pingpong /home/
      
 WORKDIR /home
 
-CMD [""]
+CMD ["bash"]
