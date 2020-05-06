@@ -12,8 +12,11 @@ for container_id in $(docker ps -aqf "name=nodetest")
 	do docker rm -f ${container_id} 
 done
 
-#lancement du conteneur nodetest ( l'argument --restart est inutile pour le moment )
-docker run -it --restart always --name nodetest --network mynet -h nodetest imagenodetest bash 
+#lancement du conteneur nodetest ( l'argument --restart est inutile pour le moment ) 
+#docker run -it --restart always --name nodetest --network mynet -h nodetest imagenodetest bash 
+
+
+
 
 #ici, le conteneur est tombé (pour x ou y raison) on lance la procédure de redémarrage
 
@@ -30,12 +33,10 @@ while true; do
 		do docker rm -f ${container_id} 
 	done
 #lancement du nouveau  conteneur
-	docker run -dt --name nodetest --network mynet -h nodetest imagenodetest bash #ligne a décommenter si on souhaite réaliser le test du temps de redémarrage
-
+	docker run -dt --name nodetest --network mynet -h nodetest imagenodetest bash 
 #connecter le conteneur à différent sous-réseau
-	docker network connect mynet2 nodetest
+	#docker network connect mynet2 nodetest
 	#docker network connect mynet3 nodetest
-	#docker network connect mynet4 nodetest
 	#docker network connect mynet4 nodetest
 	#docker network connect mynet5 nodetest
 	#docker network connect mynet6 nodetest
@@ -43,7 +44,7 @@ while true; do
 	#docker network connect mynet8 nodetest
 	#docker network connect mynet9 nodetest
 	#docker network connect mynet10 nodetest
-	#docker run -it --name node1 --network mynet -h node1 imagenodetest bash #ligne a décommenter si l'on souhaite se servir de ce code pour utiliser le conteneur et le relancer s'il automatiquement s'il crash 
+
 	end=`date +%s%N | cut -b1-13` #mesure du temps
 	runtime=$((end-start))
 	echo Conteneur redémarré en $runtime ms
