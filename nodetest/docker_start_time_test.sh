@@ -29,7 +29,7 @@ docker run -dt --name nodetest --network mynet -h nodetest imagenodetest bash
 
 
 # boucle qui permet de relancer le conteneur tout de suite après qu'il ait été fermé ( intentionellement ou non)
-i=0
+i=0 #pour le compteur de redémarrage 
 while true; do 
 	((i+=1))
 	echo le conteneur va être tué...
