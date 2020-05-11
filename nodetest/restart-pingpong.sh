@@ -12,6 +12,15 @@ for container_id in $(docker ps -aqf "name=nodetest") #supression du conteneur p
 done
 #lancement du conteneur et de l'application pingpong 
 docker run -dt --name nodetest --network mynet -h nodetest imagenodetest ./pingpongR multi
+docker network connect mynet2 nodetest
+docker network connect mynet3 nodetest
+docker network connect mynet4 nodetest
+docker network connect mynet5 nodetest
+docker network connect mynet6 nodetest
+docker network connect mynet7 nodetest
+docker network connect mynet8 nodetest
+docker network connect mynet9 nodetest
+docker network connect mynet10 nodetest
 
 echo "container running, waiting for exit code"
 #attente que le conteneur soit tué 
