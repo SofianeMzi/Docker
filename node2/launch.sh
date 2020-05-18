@@ -1,7 +1,9 @@
 #!/bin/bash
+#simple script permettant de lancer un conteneur en recréant une nouvelle image (et supprimant l'ancienne) et en supprimant l'ancien conteneur de même nom.
+
 #gcc client.c -o Cnode2
 #gcc receiver.c -o receiver
-gcc pingpongR.c -o pingpongR
+gcc pingpongR.c -o pingpongR 
 
 for image_id in $(docker images --filter=reference=image_name --format "{{.ID}}")
 	do docker rmi ${image_id}

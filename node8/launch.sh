@@ -1,4 +1,6 @@
 #!/bin/bash
+#simple script permettant de lancer un conteneur en recréant une nouvelle image (et supprimant l'ancienne) et en supprimant l'ancien conteneur de même nom.
+
 gcc client.c -o Cnode8
 gcc receiver.c -o receiver
 gcc pingpongR.c -o pingpongR
