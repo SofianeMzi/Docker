@@ -12,6 +12,8 @@ for container_id in $(docker ps -aqf "name=nodetest") #supression du conteneur p
 done
 #lancement du conteneur et de l'application pingpong 
 docker run -dt --name nodetest --network mynet -h nodetest imagenodetest ./pingpongR multi
+
+# connecter les conteneurs aux sous-réseaux
 docker network connect mynet2 nodetest
 docker network connect mynet3 nodetest
 docker network connect mynet4 nodetest
