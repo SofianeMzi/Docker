@@ -13,16 +13,8 @@ done
 docker run -dt --name node1 --network mynet -h node1 imagenode1 bash 
 
 echo "container running, waiting for exit code"
+
 #attente que le conteneur soit tué 
-#cmd_output=$(docker wait node1)
-#until [ $cmd_output -lt 0 ] #si l'exit code est supérieur ou égal à 0 ( autrement dit , s'il existe)
-#do
-	#echo "exit code: $cmd_output"
-	#echo "container will restart" 
-	#restart du conteneur
-	#bash start-restart.sh
-#done
-#amélioration du code en prévision de l'utilisation de docker checkpoint/commit/expose, utilisation d'une boucle while dans laquelle je peux indiquer de redémarrer le conteneur en utilisant d'autre options de la commande docker run, précédement j'utilisais toujours la même commande
 while true
 do
 #j'attend que la fonction wait détecte la fermeture du conteneur

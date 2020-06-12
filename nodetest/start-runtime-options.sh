@@ -12,4 +12,4 @@ for container_id in $(docker ps -aqf "name=nodetest") #supression du conteneur p
 	do docker rm -f ${container_id} 
 done
 
-docker run -it --name nodetest --network mynet -h nodetest --cpuset-cpus=0,1 --cpus=2 --cap-add=sys_nice --cpu-rt-runtime=950000 --ulimit rtprio=99 imagenodetest bash #lancement du conteneur 
+docker run -it --name nodetest --network mynet -h nodetest --cpuset-cpus=0,1 --cpus=2 --cap-add=sys_nice --ulimit rtprio=99 --cpu-rt-runtime=9000 imagenodetest bash #lancement du conteneur 
