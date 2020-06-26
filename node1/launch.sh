@@ -21,5 +21,5 @@ for image_id in $(docker images --filter "dangling=true" -q --no-trunc) #supress
 done
 
 
-docker run -it --restart always --name node1 --network mynet -h node1 imagenode1 bash #lancement du conteneur node1 ( l'argument --restart est inutile pour le moment )
+docker run -it --name node1 --network mynet -h node1 imagenode1 bash #lancement du conteneur node1 ( l'argument --restart est inutile pour le moment )
 
